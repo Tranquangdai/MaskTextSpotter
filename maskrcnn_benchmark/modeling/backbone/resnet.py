@@ -14,11 +14,8 @@ from collections import namedtuple
 
 import torch
 import torch.nn.functional as F
+from maskrcnn_benchmark.layers import Conv2d, FrozenBatchNorm2d
 from torch import nn
-
-from maskrcnn_benchmark.layers import FrozenBatchNorm2d
-from maskrcnn_benchmark.layers import Conv2d
-
 
 # ResNet stage specification
 StageSpec = namedtuple(
@@ -34,28 +31,29 @@ StageSpec = namedtuple(
 # Standard ResNet models
 # -----------------------------------------------------------------------------
 # ResNet-50 (including all stages)
-ResNet50StagesTo5 = (
+ResNet50StagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
     for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, False), (4, 3, True))
 )
 # ResNet-50 up to stage 4 (excludes stage 5)
-ResNet50StagesTo4 = (
+ResNet50StagesTo4 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
     for (i, c, r) in ((1, 3, False), (2, 4, False), (3, 6, True))
 )
 # ResNet-50-FPN (including all stages)
-ResNet50FPNStagesTo5 = (
+ResNet50FPNStagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
     for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 6, True), (4, 3, True))
 )
 # ResNet-101-FPN (including all stages)
-ResNet101FPNStagesTo5 = (
+ResNet101FPNStagesTo5 = tuple(
     StageSpec(index=i, block_count=c, return_features=r)
     for (i, c, r) in ((1, 3, True), (2, 4, True), (3, 23, True), (4, 3, True))
 )
 
 
 class ResNet(nn.Module):
+
     def __init__(self, cfg):
         super(ResNet, self).__init__()
 
@@ -66,7 +64,8 @@ class ResNet(nn.Module):
         # Translate string names to implementations
         stem_module = _STEM_MODULES[cfg.MODEL.RESNETS.STEM_FUNC]
         stage_specs = _STAGE_SPECS[cfg.MODEL.BACKBONE.CONV_BODY]
-        transformation_module = _TRANSFORMATION_MODULES[cfg.MODEL.RESNETS.TRANS_FUNC]
+        transformation_module = _TRANSFORMATION_MODULES[
+            cfg.MODEL.RESNETS.TRANS_FUNC]
 
         # Construct the stem module
         self.stem = stem_module(cfg)
@@ -122,6 +121,7 @@ class ResNet(nn.Module):
 
 
 class ResNetHead(nn.Module):
+
     def __init__(
         self,
         block_module,
@@ -197,6 +197,7 @@ def _make_stage(
 
 
 class BottleneckWithFixedBatchNorm(nn.Module):
+
     def __init__(
         self,
         in_channels,
@@ -272,6 +273,7 @@ class BottleneckWithFixedBatchNorm(nn.Module):
 
 
 class StemWithFixedBatchNorm(nn.Module):
+
     def __init__(self, cfg):
         super(StemWithFixedBatchNorm, self).__init__()
 
@@ -290,7 +292,8 @@ class StemWithFixedBatchNorm(nn.Module):
         return x
 
 
-_TRANSFORMATION_MODULES = {"BottleneckWithFixedBatchNorm": BottleneckWithFixedBatchNorm}
+_TRANSFORMATION_MODULES = {
+    "BottleneckWithFixedBatchNorm": BottleneckWithFixedBatchNorm}
 
 _STEM_MODULES = {"StemWithFixedBatchNorm": StemWithFixedBatchNorm}
 

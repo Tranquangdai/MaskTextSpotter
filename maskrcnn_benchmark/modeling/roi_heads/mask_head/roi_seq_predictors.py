@@ -3,7 +3,6 @@ import math
 import random
 
 import numpy as np
-
 import torch
 from maskrcnn_benchmark.utils.chars import char2num, num2char
 from torch import nn
@@ -11,6 +10,8 @@ from torch.nn import functional as F
 
 gpu_device = torch.device("cuda")
 cpu_device = torch.device("cpu")
+
+device = gpu_device if torch.cuda.is_available() else cpu_device
 
 
 def reduce_mul(l):
@@ -67,8 +68,9 @@ class SequencePredictor(nn.Module):
         seq_decoder_input = self.seq_encoder(rescale_out)
         x_t, y_t = np.meshgrid(np.linspace(0, 31, 32),
                                np.linspace(0, 7, 8))  # (h, w)
-        x_t = torch.LongTensor(x_t, device=cpu_device)
-        y_t = torch.LongTensor(y_t, device=cpu_device)
+
+        x_t = torch.LongTensor(x_t, device=device)
+        y_t = torch.LongTensor(y_t, device=device)
         x_onehot_embedding = self.x_onehot(x_t).transpose(0, 2).transpose(
             1, 2).repeat(seq_decoder_input.size(0), 1, 1, 1)
         y_onehot_embedding = self.y_onehot(y_t).transpose(0, 2).transpose(
@@ -82,9 +84,9 @@ class SequencePredictor(nn.Module):
                 (seq_decoder_input_reshape.size(1), 1), dtype=np.int32)
             bos_onehot[:, 0] = self.cfg.SEQUENCE.BOS_TOKEN
             decoder_input = torch.tensor(
-                bos_onehot.tolist(), device=cpu_device)
+                bos_onehot.tolist(), device=device)
             decoder_hidden = torch.zeros(
-                (seq_decoder_input_reshape.size(1), 256), device=cpu_device)
+                (seq_decoder_input_reshape.size(1), 256), device=device)
             use_teacher_forcing = True if random.random(
             ) < self.cfg.SEQUENCE.TEACHER_FORCE_RATIO else False
             target_length = decoder_targets.size(1)
@@ -125,7 +127,7 @@ class SequencePredictor(nn.Module):
             real_length = 0
             if use_beam_search:
                 for batch_index in range(seq_decoder_input_reshape.size(1)):
-                    decoder_hidden = torch.zeros((1, 256), device=cpu_device)
+                    decoder_hidden = torch.zeros((1, 256), device=device)
                     word = []
                     char_scores = []
                     detailed_char_scores = []
@@ -154,8 +156,8 @@ class SequencePredictor(nn.Module):
                     bos_onehot = np.zeros((1, 1), dtype=np.int32)
                     bos_onehot[:, 0] = self.cfg.SEQUENCE.BOS_TOKEN
                     decoder_input = torch.tensor(
-                        bos_onehot.tolist(), device=cpu_device)
-                    decoder_hidden = torch.zeros((1, 256), device=cpu_device)
+                        bos_onehot.tolist(), device=device)
+                    decoder_hidden = torch.zeros((1, 256), device=device)
                     word = []
                     char_scores = []
                     for di in range(self.cfg.SEQUENCE.MAX_LENGTH):
@@ -188,7 +190,7 @@ class SequencePredictor(nn.Module):
             decoder_hidden = seq[-1][-1][0]
             onehot = np.zeros((1, 1), dtype=np.int32)
             onehot[:, 0] = seq[-1][0]
-            decoder_input = torch.tensor(onehot.tolist(), device=cpu_device)
+            decoder_input = torch.tensor(onehot.tolist(), device=device)
             decoder_output, decoder_hidden, decoder_attention = self.seq_decoder(
                 decoder_input, decoder_hidden, encoder_context)
             detailed_char_scores = decoder_output.cpu().numpy()
